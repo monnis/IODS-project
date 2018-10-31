@@ -1,5 +1,5 @@
 Introduction to open data science.
 This is a MOOC organized by the university of Helsinki. Google it, if you're interested.
 
-This is my project folder:
-https://github.com/monnis/IODS-project
+This is my course diary:
+https://monnis.github.io/IODS-project/
