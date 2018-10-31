@@ -1,6 +1,5 @@
-READ ME -file:
 Introduction to open data science.
 This is a MOOC organized by the university of Helsinki. Google it, if you're interested.
 
 This is my project folder:
-[link](https://github.com/monnis/IODS-project)
+https://github.com/monnis/IODS-project
