@@ -1,4 +1,8 @@
 
-# About the project
+#Chapter 1: Hi pseudoanonymous referee
 
-*Write a short description about the course and add a link to your github repository here. This is an R markdown (.Rmd) file so you can use R markdown syntax. See the 'Useful links' page in the mooc area (chapter 1) for instructions.*
+**This is my course page (Juha/monnis).** Here is the link to my github repository
+[link](https://github.com/monnis/IODS-project) 
+
+**This is the R markdown cheat sheet.** Should be useful and stuff.
+[link](https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf?fbclid=IwAR03753oXvpjACgKnps3DpZH1kz07yKbGQ69IQ2-V60QsIF3aBRoRzibkpE)
