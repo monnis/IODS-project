@@ -1,7 +1,94 @@
-# Insert chapter 2 title here
+#Chapter 2: Regression and model validation 
 
-*Describe the work you have done this week and summarize your learning.*
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using  
+**Part 0: Libraries used and overall setup**
+
+Disclaimer: this first part looks a bit awful, but bear with me.
+
+```{r echo=TRUE, warning=FALSE} 
+
+rm(list=ls())
+
+library(dplyr)
+library(ggplot2)
+library(GGally)
+
+```
+
+**Part 1: The data**
+*Structure of the data and the dimensions of the data*
+
+A sample of students giving answers to questions related to how they learn stuff and some background characteristics (e.g. age, gender). There is a grand total of 166 observations and 7 variables; one factor variable expressing gender,three integer variables expressing age, attitude & points for some exam and three numeric variables expressing indexes that are based on questions related to their methods of learning stuff. More precisely, whether their learning  exhibits signs of so called strategic learning, deep learning and/or surface learning. 
+
+```{r} 
+setwd("~/GitHub/IODS-project/data")
+
+students2014 <- read.table("learning2014.txt")
+str(students2014)
+dim(students2014)
+```
+
+**Part 2: Overview of the data**
+
+The students appear to be mostly female (110 as opposed to 56 males) and their median age is 22. Their point distribution is skewed to the right, which indicates that they are a quite capable lot. Their attitude seems to be the most important factor in determining the points with a whopping correlation of 0.437. Out of the learning indexes, the elements of stategic learning corralete positively with the points they receive, while surface learning's magnitude is the same, but the sign is negative. Deep learning index matters the least, with close to zero correlation. Thus, it seems that the points earned favour strategic learning. 
+
+```{r} 
+summary(students2014)
+ggpairs(students2014, lower = list(combo  =wrap("facethist", bins=20)))
+```
+
+**Part 3: Linear regression model**
+
+My chosen variables are attitude, stratetegic learning index (stra) and surface learning index (surf).
+
+Out of the components, only attitude is statistically significant (***), which means that we can REJECT the null hypothesis (null hypothesis means that we presume the chosen regressor's effect to be zero to begin with, i.e. that it doesn't have any effect on the dependent variable). However, we cannot reject the null hypotheses regarding the chosen learning indexes. Perhaps, determining their role would require more observations or maybe more variation within the data or perhaps they don't have any predicting power against the chosen dependent variable. For now, we can just say that with the given data, we cannot observe a statistically significant relationship between points and the learning indexes. 
+
+As for the significant regressor, the results imply that one point of the attitude metric predicts roughly 0.34 points in the exam. The intercept is ~11, meaning that this is the model's baseline points for everyone - points that even a person with an attitude score of zero can get. However, this is a hypothetical case, as the minimum of attitude points in the sample is 14 points.
+
+
+```{r}
+Linear_regression <- lm(Points ~ Attitude + stra+ surf, data = students2014)
+
+summary(Linear_regression)
+```
+**Part 4: Variation of the model**
+
+Removing the nonsignificant variables.
+
+For the model parameters: As I said above "the results imply that one point of the attitude metric predicts roughly 0.35 points in the exam. The intercept is ~11.6, meaning that this is the model's baseline points for everyone - points that even a person with an attitude score of zero can get. However, this is a hypothetical case, as the minimum of attitude points in the sample is 14 points". Removing the nonsignificant independent variables does not change the results much.
+
+The R squared gains the value of 0.1906. This is the percentage  of the variation that the linear model explains out of the total variation (or 19.06 is to be specific) and means that the actual data points are not that close to the regression line. In other words: we compare a "baseline model" and our fitted model. The baseline model is a totally useless model which always predicts the mean of observed dependent variable and does not use the independent variables at all. If the Fitted model is close to the baseline model (the mean of the dependent variable), the R squared is small. However, if the predicted values and the actual observations are closer together, the R squared is big. Theoretically, an R squared of one would mean that the data points would overlap the regression line perfectly.
+
+Ultimately, it must be noted that the R squared alone is not enough to indicate whether the model is bad (or good) - for instance a low R squared can be totally understandable, considering the complexity of the statistical relationship we are trying to model. Is this a big R squared? Well, to the best of my knowledge, in social sciences a low R squared can be justified, and this is not even that low. It all depends on the context: modelling the weather or macroeconomic fluctuations or the role of certain genes explaining the onset of psychosis  are bound to have varying coefficients of determination. 
+
+```{r}
+Linear_regression2 <- lm(Points ~ Attitude, data = students2014)
+
+summary(Linear_regression2)
+```
+
+**Part 5: diagnostics**
+
+Naturally, there are more or less crucial assumptions behind the linear regression model.
+
+i) The relationship modelled is linear. 
+ii) The noise, or the error term, is normally distributed (mean of zero and constant variance).
+iii) The errors are not correlated, which means that there is no omitted variable bias or other source of other sources of endogeinety present such as reverse causality or systematic measurement errors.  
+
+Analyzing the residuals of the model- the difference between the fitted observations and the actual observations - gives insight whether these assumptions are violated.
+
+The QQ-plot explores the normality assumption. In this case, the normality is somewhat satisfied with only some deviation from the line in the both ends of it. 
+
+The residuals versus fitted values plot explorest the constant variance assumption. As the name states, we try to find any patterns across the plotted values. Nothing alarming here either - the points are spread out somewhat randomly. 
+
+Finally, the leverage plot can help identify outliers' impact on the model parameters. Outliers are problematic as they often don't represent the sample, and can deviate the regression line. Here, no outliers really stand out, which is great!  
+
+In addition to tools like these, common sense also often helps. 
+
+
+```{r}
+par(mfrow = c(2,2))
+
+plot(Linear_regression2, c(1,2,5))
+```
+
