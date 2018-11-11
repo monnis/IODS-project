@@ -1,6 +1,6 @@
 #Juha Luukkonen, 06.11.2018.
 #File description: The second exercise for the IODS-course organized by the University of Helsinki.
-#Reference to the data source: 
+#Reference to the data source: http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-data.txt
 
 # OVERALL SETUP / OVERALL SETUP / OVERALL SETUP 
 
@@ -68,7 +68,3 @@ write.table(learning2014, file = "learning2014.txt")
 students2014 <- read.table("learning2014.txt")
 str(students2014)
 head(students2014)
-
-
-
-
