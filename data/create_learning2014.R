@@ -69,10 +69,6 @@ students2014 <- read.table("learning2014.txt")
 str(students2014)
 head(students2014)
 
-# Seems good. "Everything' gonna be alright" - Bob Marley
-
-
-# ANALYSIS PART / ANALYSIS PART / ANALYSIS PART / ANALYSIS PART
 
 
 
