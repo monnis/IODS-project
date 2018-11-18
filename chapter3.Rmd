@@ -1,0 +1,122 @@
+#Chapter 3: Logistic regression 
+
+
+**Part 0: Libraries used and overall setup**
+
+Disclaimer: this first part looks a bit awful, but bear with me.
+
+```{r echo=TRUE, warning=FALSE} 
+
+rm(list=ls())
+
+library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr)
+
+```
+
+
+**Part 2: The data**
+
+This data contains information about Portuguese students and their endeavours in life. We use it to analyze the subtle relationship of alcohol consumption and school performance. The  variables are listed below.   
+
+```{r} 
+setwd("~/GitHub/IODS-project/data")
+
+alc <- read.table("alc.txt")
+
+colnames(alc)
+
+```
+
+
+**Part 3: Choosing the variables**
+My variables of choice are:
+
+*absences* - Which comes first: absences or alcohol use? Causality is a bit questionable, but one way to hypothesize this is that more hangovers ( ans as such absences) means more alcohol use. There is a likely positive correlation.
+
+*romantic* - Most persons in romantic relationships tend to become ex-drinking buddies. This is an observation in life, not a hypothesis :D
+
+*famsize* - Family size might be an unintuitive choice at first glimpse, but should one have many siblings, some of them might be older and thus be able to purchase alcohol for their younger siblings. Personal experiances tell me, that this is one of the main supply channels of alcohol for young people.
+
+*studytime* - Time spent studying is time away from drinking - as time spent drinking is time away from studying. Causality is again bit hard, but there will likely be a negative correlation.  
+
+
+**Part 4: Exploring the chosen variables**
+
+
+The graphs indicate that over 2/3 of the students drink moderately. Two thirds is not romantically involved. Two thirds of the sample have more than 3 family members and it their weekly study time rarely exceeds 10 hours. 
+
+Regarding the cross-tabulations, I grouped moderate (including teatotallers) and heavy users i) according to their family size and ii) according to their romantic status. 
+
+It seems that children in bigger families do not drink heavily: It is more common for the children in the smaller families to consume high amounts of alcohol. On average, the high-users from bigger families are less absent than high-users from smaller families. The high-users average study time is smaller than of the student's who drink moderately, but there seems to be no big (or interestening) difference regarding the family size. My hypothesis regarding family size seems to be highly questionable. 
+
+Being in a romantic relationship seems to be associated with lower levels of alcohol consumption if looking at the case amounts. Makes sense regarding my hypothesis. 45% of non-relationship students drink heavily as opposed to 37,5% of the couples-people.  
+
+For persons in a romantic relationship, there seem to be more absences for both the moderate and heavy drinkers when compared to non-relationship persons (probably spending time together, awww). If the romantic status is associated with high levels of alcohol use, the mean absences get even bigger (maybe they are drinking together more often?).  
+
+It must be noted, that heavy drinkers might not be that great significant other -material: they might be more interested in partying than datin, as such there might be selection problems and numerous other mechanisms/channels that I haven't even thought of.   
+
+
+```{r}
+
+
+chosenvars <- c("absences", "romantic", "famsize", "studytime", "high_use", "sex")
+alc2 <- select(alc, one_of(chosenvars))
+str(alc2)
+
+gather(alc2) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+
+alc %>% group_by(famsize, high_use) %>% summarise(count = n(), mean_absences = mean(absences), mean_studytime = mean(studytime))
+
+alc %>% group_by(romantic, high_use) %>% summarise(count = n(), mean_absences = mean(absences), mean_studytime = mean(studytime))
+
+```
+
+
+**Part 5: Logistic regression to the rescue**
+
+It must be noted, that intuition tells me that the regression equation is "a bit dirty". Study time and absences are probably correlated as heck, and combining an alcohol use indicator with absences and study time as such, well it sounds like an unholy triangle regarding the statistical inference.
+
+*Interpretation of the summary and the odds ratios*
+
+From my variables, study time and absences are statistically significant.
+More time spent studying indicates less heavy boozing and more absences probably indicates recovering from this heavy boozing (or something else, this is just a hypothesis).
+
+The coeffient for study time is -0.53 (OR: 0.59) and the coefficient for absences 0.08 (OR: 1.09). The meaning of the raw coefficients is not that intuitive. The signs [+,-] and the magnitude of the coefficients are a bit informative, but if we  exponent them, we change them to odds ratios. 
+
+For example an odds ratio of 0.59 with the study time indicates that a jump into a higher studying group (or category, as this is a categorical variable gaining the values 1-4) decreases the odds of drinking heavily. Vice versa, this means that a jump to a group of students that studies less (as it is a categorical variable gaining the values 1-4), makes the odds of drinking heavily (1/0.59) 1.69 times bigger. For the absences, one extra absence makes the odds of being a heavy drinker 1.08 times bigger. 
+
+
+```{r}
+
+m <- glm(high_use ~ absences + romantic + famsize + studytime, data = alc, family = "binomial")
+
+OR <- coef(m) %>% exp
+
+CI <- confint(m) %>% exp
+
+summary(m)
+
+cbind(OR, CI)
+
+```
+
+**Part 6: Exploring the predictive power**
+
+Well, it seems that my model is not that convincing.
+
+```{r}
+
+probabilities <- predict(m, type = "response")
+alc <- mutate(alc, probability = probabilities)
+
+alc <- mutate(alc, prediction = probability>0.5)
+
+table(high_use = alc$high_use, prediction = alc$prediction)
+
+g <- ggplot(alc, aes(x = probability, y = high_use, col=prediction))
+
+g <- g +geom_point()
+g
+
+
+```
