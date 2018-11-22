@@ -1,0 +1,160 @@
+#Chapter 4: Clustering and classification
+
+**Part 1: Libraries used and overall setup**
+
+Disclaimer: this first part looks a bit awful as html, but bear with me.
+
+```{r echo=TRUE, warning=FALSE} 
+
+rm(list=ls())
+
+library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); library(MASS); library(corrplot)
+
+```
+
+
+**Part 2: The Boston housing dataset **
+
+
+The dataset is housing values in the suburbs of Boston and contains aggregated data about median housing prices, crime levels per capita and other possibly relevant things. The data is aggregated by the suburb level and in total, there are 516 observations (suburbs) and 14 different variables, out of which all are either numeric orintegers. 
+
+In order to analyze the median housing prices, the so called hedonic pricing method can be used. Hedonic prices is an highly influential idea developed by the late economist Shervin Rose in the 70s: the price of a good can be derived from its characteristics, but of course it can be turned the other way around as well, to analyze crime rates for instance as we are doing here.
+
+Link to the data and its source information: https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html
+
+
+```{r}
+data("Boston")
+
+dim(Boston)
+str(Boston)
+```
+
+**Part 3: The variables in the data **
+
+Below, I have summaries and distributions of the variables as well as a correlation matrix.I comment mostly on the things that appear as interesting to me.
+The proportion of houses built before 1940 is skewed to the right, thus there are less totally newer suburbs.  Well, Boston is an old city, Most of the suburbs are somewhat close to the employment centers of Boston, which makes sense. 
+For the per capita crime-levels, there seems to be an absurd level of crime in one suburb, but most of them are relatively crime-free. The percent of the lower status per population is also skewed to the left, which maeks sense, as Boston has always had that upper midclass sound to it. Lastly, the median (owner-occupied) home value is skewed to the left (below 30k USD). However, there is a noticeable spike on the 50k USD mark.
+
+As for the correlations, crime correlates negatively with housing prices, positively with accessibility to radial highways, the property tax rate and the percentages of lower status population.  The median price correlates quite negatively with the percentages of lower status population, which is intuitive. 
+The proximity to Charles River does not correlate that much with, well anything. This is somewhat surprising, as I would have imagined that it would be correlated with housing prices and ages at least.
+
+```{r}
+summary(Boston)
+
+gather(Boston)  %>% ggplot(aes(value)) + facet_wrap(~key, scales="free") + geom_histogram()
+
+
+cor_matrix<-cor(Boston) %>% round(2)
+cor_matrix
+corrplot(cor_matrix, method="circle", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+
+```
+
+**Part 4: Standardizing the variables and other stuff**
+
+Standardizing variables or an entire dataset can be done for numerous reasons like for the sake of easier comparability. After the scaling, the variables' distributions look exactly the same, but they are rescaled to have a mean of zero and standard deviation of one. 
+
+```{r}
+boston_scaled <- scale(Boston)
+summary(boston_scaled)
+boston_scaled <- as.data.frame(boston_scaled)
+gather(boston_scaled)  %>% ggplot(aes(value)) + facet_wrap(~key, scales="free") + geom_histogram()
+
+
+bins <- quantile(boston_scaled$crim)
+bins
+
+label <- c("low","med_low","med_high","high")
+crime <- cut(boston_scaled$crim, breaks = bins, labels = label, include.lowest = TRUE)
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+
+
+n <- nrow(boston_scaled)
+ind <- sample(n,  size = n * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+```
+
+**Part 5: Linear discriminant analysis**
+
+
+```{r}
+lda.fit <- lda(crime ~ ., data = train)
+
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+classes <- as.numeric(train$crime)
+
+plot(lda.fit, dimen = 2, col = classes, pch = classes )
+lda.arrows(lda.fit, myscale = 2)
+```
+
+
+**Part 6: Predicting with the model**
+
+Our model predicts a suburb belonging to the high crime class extremely well, but the other lower crime classes leave a bit to hope for. Especially med_low tends to get classified as med_high. But overall, not too bad! 
+
+The reason why high crime suburbs are classified so well by the model can  be seen from the LDA-plot: accessibility to radial highways seems to be a huge and distinctive factor in determining these suburbs. "Radan varrella sattuu ja tapahtuu", some Finns might say.
+
+![](C:\Users\Juha\Desktop\notkis.png) 
+[Music recommendation: "Kuustoista kilsaa Kontulaan"](https://www.youtube.com/watch?v=LV_3XhfbNTY) 
+
+
+
+```{r}
+lda.pred <- predict(lda.fit, newdata = test)
+
+# cross tabulate the results
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+
+
+**Part 7: Cluster analysis**
+
+The optimal number of clusters seems to be 2. The model suggests that there are two kinds of suburbs in the city of Boston. 
+
+A glimpse to the plots reveals, that the black cluster is categorized by more crime, more pollution, being closer to radial highways and being away from employment centers. The red cluster is in many ways the opposite. Or that's what my intuition tells me! 
+
+Since cluster analysis usually relies on the imagination of its user and Boston is a reputable city of Irish, I'm going to name these two kinds of suburb categories as "Carrot Top Hoods" (black cluster) and "True Kelt Dwellings" (red cluster).
+
+
+```{r}
+
+data("Boston")
+boston_scaled2 <- scale(Boston)
+boston_scaled2 <- as.data.frame(boston_scaled2)
+
+dist_eu <- dist(boston_scaled2)
+
+summary(dist_eu)
+
+# k-means clustering
+km <-kmeans(boston_scaled2, centers = 3)
+
+set.seed(123)
+k_max <- 10
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled2, k)$tot.withinss})
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+
+km <-kmeans(boston_scaled2, centers = 2)
+
+pairs(boston_scaled2[6:10], col = km$cluster)
+pairs(boston_scaled2[1:5], col = km$cluster)
+
+
+```
+
+
+
+
