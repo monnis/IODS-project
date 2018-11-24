@@ -55,6 +55,8 @@ corrplot(cor_matrix, method="circle", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
 
 Standardizing variables or an entire dataset can be done for numerous reasons like for the sake of easier comparability. After the scaling, the variables' distributions look exactly the same, but they are rescaled to have a mean of zero and standard deviation of one. 
 
+What we can see from the LDA-plot, is that accessibility to radial highways (rad) is an important feature contributing to LDA1, and it is not closely correlated with the other features. The length of the arrow tells us that it is a huge discriminant used in determining the high crime suburbs. LDA2 seems to determine the other crime level suburbs. 
+
 ```{r}
 boston_scaled <- scale(Boston)
 summary(boston_scaled)
