@@ -63,7 +63,7 @@ summary(gii)
 
 # PART 6: Joining these datasets together
 
-human <- inner_join(hd, gii, by=c("Country" ="Country"), suffix = c(".hd",".gii"))
+human <- inner_join(hd, gii, by = "Country")
 
 colnames(human)
 

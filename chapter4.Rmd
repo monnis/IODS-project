@@ -2,8 +2,6 @@
 
 **Part 1: Libraries used and overall setup**
 
-Disclaimer: this first part looks a bit awful as html, but bear with me.
-
 ```{r echo=TRUE, warning=FALSE} 
 
 rm(list=ls())
