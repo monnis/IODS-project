@@ -1,0 +1,150 @@
+#Chapter 5: Dimensionality reduction techniques
+
+**Part 0: Libraries used and overall setup**
+
+```{r echo=TRUE, warning=FALSE} 
+
+rm(list=ls())
+
+library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); library(MASS); library(corrplot); library(FactoMineR)
+
+```
+
+
+
+**Part 1: Making sense of the data**
+
+I'll start by exploring ratios of labor force participation and secondary educative attainment between genders. Regarding the secondary educatio ratio, there are some countries, where there are more females with secondary education than makes, but overall, it seems that the ratio usually lies somewhere between 80% to 100% (as compared to males; 1 would mean equal amount of persons with secondary education). For the labor force participation rate, majority of countries lie between 0.5 and 1, but distribution of ratios is more uneven than the secondary education's ratio and there are less cases where there are more females than males. For other participatory rates, females are less likely to be members of parliament, with the mean percent between countries being just 20.91.
+
+As for the other variables, maternal mortality has some drastic outliers, as has life expectancy.  A likely explanations for high maternal mortality and low life expectancy is poverty (and warfare, but we cannot identify it from the data) as there are strong negative correlations between GNI and maternal mortality and adolescent birth rates.  
+For other correlations, life expectancy correlates strongly (+) with expected education years and life expectancy also has is strong negative correlations with maternal mortality rate and adolescent birth rate, which makes sense, as maternal mortality and adolescent birth rate seem to correspondingly correlate strongly (+).
+
+
+```{r echo=TRUE, warning=FALSE} 
+setwd("~/GitHub/IODS-project/data")
+
+human <- read.table("human.txt")
+```
+
+```{r} 
+summary(human)
+gather(human)  %>% ggplot(aes(value)) + facet_wrap(~key, scales="free") + geom_histogram()
+
+
+M<-cor(human) %>% round(2)
+M
+corrplot(M, type = "upper", method="square", cl.pos = "b", tl.pos = "d", tl.cex = 0.5)
+
+
+```
+
+
+**Part 2: PCA with non-standardized variables**
+
+[Comparison of non-standardized and standardized PCAs under Part 3.]
+
+```{r echo=TRUE, warning=FALSE} 
+pca_human <- prcomp(human)
+
+s <- summary(pca_human)
+
+pca_pr <- round(100*s$importance[2, ], digits = 1)
+pca_pr
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+
+biplot(pca_human, cex = c(0.5, 0.7), col = c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+
+
+```
+
+
+**Part 3: Comparison between PCAs: non-standardized vs standardized variables**
+
+
+PCA does not funk that well if the variables are not standardized. This is due to the variable scaling: especially GNI seems to vary on a large scale as compared to other variables, which makes the analysis futile. As such, there's not that much sense in trying to decipher these results, besides understanding that the analysis is ruined by one rampantly varying variable.
+
+![](C:\Users\Juha\Desktop\milou.png)  **My face whilst trying to decipher the results**
+
+
+After we have standardized the variables, the results are very different and the biplot and the components seem meaningful.
+
+A word about PCA, if you may. If we have a ton of variables, many of the variables can measure related attributes and as such are "redundant" in the analysis. In other words, they can measure the same phenomena and as such the same underlying things might affect them. For instance, intuition tells, that female to male labor force participation rate and the percentage of female parliament members are closely correlated outcomes determined by similar things in the society (religion, empowerment of females etc.) and as such, in general they measure the same phenomenon. In general that is, of course there might be drastic exceptions.
+
+Based on the original variables, PCA constructs variables that capture the maximum amount of variance of the variables in the original data and can be used to reduce dimensions used in statistical analysis. Or to be precise, the first component captures maximum amount of variance, the second component captures maximum amount of variance left after the first one and so on. The principal components are uncorrelated, which is useful, since the original data can be a real cluster of heavily correlated variables. In this case, the two principal components depicted in the biplot capture 69,8% of the variance between countries. 
+
+We can analyze the first two components in the following manner with the biplot below. 
+
+* The arrow length
+    + proportional to the standard deviation of the variable.
+    + longer arrows mean more variance.
+  
+  
+* The arrow angles regarding other arrows
+    + Tells about correlation between the variables.
+    + Example: maternal mortality and adolescent birth rates are positively correlated as   the angle is quite small.
+    + The two variables measuring female participation in labor markets and parliament of which arrows are orthogonal to these two are not correlated with maternal mortality nor adolescent birth rates, which is somewhat surprising.
+  
+  
+* The arrow direction regarding the principal components
+    + The arrows aligned with x- or y-axis tell which principal component they are most correlated with. 
+    + For instance, the two variables measuring female participation in labor markets and politics are aligned with y-axis and correlated with principal component2, while the other variables aligned mostly with x-axis are correlated with PC1.
+
+
+```{r echo=TRUE, warning=FALSE} 
+
+human_std <- scale(human)
+summary(human_std)
+
+pca_humanstd <- prcomp(human_std)
+
+z <- summary(pca_humanstd)
+
+pca_prz <- round(100*z$importance[2, ], digits = 1)
+
+# print out the percentages of variance
+pca_prz
+
+# create object pc_lab to be used as axis labels
+pc_labz <- paste0(names(pca_prz), " (", pca_prz, "%)")
+
+# draw a biplot
+biplot(pca_humanstd, cex = c(0.5, 0.7), col = c("grey40", "deeppink2"), xlab = pc_labz[1], ylab = pc_labz[2])
+
+```
+
+
+**Part 4: Personal interpretation of the biplot components**
+
+In this case, the two principal components depicted in the biplot above capture 69,8% of the variance between countries. 
+
+The components and their main variables (as taken from the biplot arrows' directions):
+
+Female-male labour force participation and percentages of females as members of parliament contribute most to the PC2. I name this as the *FEMALE PARTICIPATION PRINCIPAL COMPONENT*. Female participation in politics and in labor markets seems to be a differentiate factor in analyzing the countries. 
+
+Expected education, GNI, life expectancy and female-male secondary educational attainment rate  (all of them positively correlated + to PC1) as well negatively correlated maternal mortality and adolescent birth rates contribute most to the PC1. I name this *OVERALL DEVELOPMENT PRINCIPAL COMPONENT*. 
+
+So basically, we have the overall development and female participation components and they capture almost 70% of the variance between countries.
+
+
+**Part 5: Multiple correspondence analysis**
+
+Since there's a load of variables, 36 to be exact, with 300 observations, I'm going to limit the number of variables used in the analysis. 
+
+
+```{r echo=TRUE, warning=FALSE} 
+data("tea")
+
+str(tea)
+dim(tea)
+summary(tea)
+
+keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
+tea_time <- select(tea, one_of(keep_columns))
+
+mca <- MCA(tea_time, graph = FALSE)
+
+summary(mca)
+
+plot(mca, invisible=c("ind"), habillage = "quali")
+
+```
