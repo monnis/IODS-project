@@ -6,7 +6,7 @@
 
 rm(list=ls())
 
-library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); library(MASS); library(corrplot); library(FactoMineR)
+library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); library(corrplot); library(FactoMineR)
 
 ```
 
@@ -128,7 +128,21 @@ So basically, we have the overall development and female participation component
 
 **Part 5: Multiple correspondence analysis**
 
-Since there's a load of variables, 36 to be exact, with 300 observations, I'm going to limit the number of variables used in the analysis. 
+Since there's a load of variables, 36 to be exact, with a total of 300 observations, I'm going to limit the number of variables used in the analysis as done with the data camp exercises. All but one variables are factor variables, with at least 2 levels. The only integer variable is age. So basically, we have some tea drinkers here and we are trying to summarize what drives different their tea drinking. 
+
+Sooo, MCA is sort of PCA, except for it is used for factor variables. The components explain variance in the manner as with PCA.In the biplot, factor levels with similar profile are in close proximity to each other. What I find interesting, are the following combinations (and my interpretations):
+
+*Teatime + pub + tea bag & unpackaged - Sounds like a highly British combination. Tea, teatime and the local village pub. 
+ 
+*Earl Grey + spirituality - If the nationality of the people that the sample covers  is British, then this is an understandable combination! But for some reason, I would have anticipated green tea to be closer to spirituality. Maybe I don't understand that much about tea drinking.
+
+*Green tea + not tea time - Well sort of makes sense as green tea drinkers might not be the traditional British tea drinkers. Maybe I don't understand anything about tea drinking.
+
+
+By the way, MCA reminds me of Beastie Boys.
+
+![](C:\Users\Juha\Desktop\sabotageee.jpg) 
+[Music recommendation: "Sabotage"](https://www.youtube.com/watch?v=z5rRZdiu1UE)
 
 
 ```{r echo=TRUE, warning=FALSE} 
@@ -138,8 +152,7 @@ str(tea)
 dim(tea)
 summary(tea)
 
-keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
-tea_time <- select(tea, one_of(keep_columns))
+tea_time <- tea[,c("Tea", "how", "spirituality", "tearoom", "pub", "tea.time")]
 
 mca <- MCA(tea_time, graph = FALSE)
 
