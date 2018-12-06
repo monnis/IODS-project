@@ -111,15 +111,11 @@ ratsass2 <- ratsl %>%
 glimpse(ratsass2)
 
 str(ratsass2)
-#ok tähän mennessä
 
 ratsass3 <- filter(ratsass2,mean<550)
 
 str(ratsass3)
-#ok tähän mennessä
 
-
-# Draw a boxplot of the mean versus treatment
 ggplot(ratsass3, aes(x = Group, y = mean)) +
   geom_boxplot() +
   stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white") +
@@ -160,7 +156,7 @@ The data used in this second part:
 A few words about  multilevel modeling, if I may. A basic way to distinguish between different multilevel models is to categorize them into i) random intercept model, ii) random slope model and iii) a combination of the two, random intercept + slope model.
 Personally, I prefer different naming conventions with "varying intercept model" and "varying slope model", as they are more intuitive, but that might just be me.
 
-What does random or varying mean in this context? Traditionally  with these models, we can take into account that the data structure is nested (**to my understanding that is**). One classic example of a nested data structure could be GPAs of students from different classes and schools. A usual assumption for regression model is that the observations are independent, but this might not be a valid assumption. With multilevel models we can allow heterogeineity between groups or individuals slopes and/or intercepts. For instance, these different classes and schools might affect the outcome variable of the students in some way (their outcomes are correlated by the schools or classes) and with multilevel models we can get this sort of main effect and then consequently analyze what kind of effects different nested structures might have on the intercepts or slopes in the analysis.
+What does random or varying mean in this context? Traditionally  with these models, we can take into account that the data structure is nested (*to my understanding that is*). One classic example of a nested data structure could be GPAs of students from different classes and schools. A usual assumption for regression model is that the observations are independent, but this might not be a valid assumption. With multilevel models we can allow heterogeineity between groups or individuals slopes and/or intercepts. For instance, these different classes and schools might affect the outcome variable of the students in some way (their outcomes are correlated by the schools or classes) and with multilevel models we can get this sort of main effect and then consequently analyze what kind of effects different nested structures might have on the intercepts or slopes in the analysis.
 
 It must be noted that here we use multilevel models to allow slopes and intercepts differ by individual rat. The main point is that traditional regressions assume that the observations are independent, which is a rather invalid assumption with a dependent variable like rat weight. Rat weight at time=0 and weight at time=1 are unlikely to be independent observations. As such, we take theintraclass correlation of an individual rat's weight between different time points into account, making this a more robust form of analysis.
 
@@ -170,6 +166,9 @@ ON with the show! First I plot the bprs by the treatment and the control groups.
 
 
 ```{r}
+bprsl$treatment <- factor(bprsl$treatment)
+
+
 ggplot(bprsl, aes(x = week, y = bprs, linetype = as.factor(subject))) +
   geom_line() +
   scale_linetype_manual(values = rep(1:10, times=4)) +
@@ -180,7 +179,7 @@ ggplot(bprsl, aes(x = week, y = bprs, linetype = as.factor(subject))) +
 ```
 
 
-Then a *standard issue linear regression* is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repated measures structure of the data.
+Then a **standard issue linear regression** is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repated measures structure of the data.
 
 ```{r}
 bprsl_reg <- lm(bprs ~ week + treatment, data = bprsl)
@@ -189,7 +188,7 @@ summary(bprsl_reg)
 ```
 
 
-*Random intercept model* to the rescue! This means, that we allow the intercept to vary for each individual male. 
+**Random intercept model** to the rescue! This means, that we allow the intercept to vary for each individual male. 
 
 
 ```{r}
@@ -199,7 +198,7 @@ summary(bprsl_int)
 ```
 
 
-*Random intercept and random slope model*
+**Random intercept and random slope model**
 
 
 ```{r}
@@ -209,48 +208,57 @@ summary(bprsl_intslope)
 ```
 
 
-*Random intercept and random slope model with timeXgroup interaction*
+**Random intercept and random slope model with timeXgroup interaction**
 
 
 
 ```{r}
 bprsl_intslopeX <- lmer(bprs ~ week + treatment + week*treatment + (week | subject), data = bprsl, REML = FALSE)
+
+Fitted <- fitted(bprsl_intslopeX)
+bprsl <- bprsl %>% mutate(Fitted)
+
 summary(bprsl_intslopeX)
+
 
 
 ```
 
 
-*Comparison: Observed vs fitted growth rate profiles by groups*
-
-
+**Comparison: Observed vs fitted bprs by groups** Here they are! Lol!
 
 
 ```{r}
 
+
+bprsl <- mutate(bprsl, subject2 = ifelse(bprsl$treatment==2, bprsl$subject+20, bprsl$subject)) 
+
+
+
+
+ggplot(bprsl, aes(x = week, y = bprs, group = subject2)) + 
+  geom_line(aes(linetype = treatment))  +
+  geom_line(aes(linetype = treatment)) +  
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_x_continuous(name = "Time (weeks)", breaks = seq(0, 8, 1)) +
+  scale_y_continuous(name = "BPRS") +
+  theme(legend.position = "top")
+  
+
+ggplot(bprsl, aes(x = week, y = Fitted, group = subject2)) +
+  geom_line(aes(linetype = treatment)) +  
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_x_continuous(name = "Time (weeks)", breaks = seq(0, 8, 1)) +
+  scale_y_continuous(name = "Fitted BPRS") +
+  theme(legend.position = "top")
+
+
+
+
+
 ```
-
-draw the plot of RATSL
-ggplot(RATSL, aes(x = Time, y = Weight, group = ID)) +
-  geom_line(aes(linetype = Group)) +
-  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 20)) +
-  scale_y_continuous(name = "Observed weight (grams)") +
-  theme(legend.position = "top")
-
-Create a vector of the fitted values
-Fitted <- fitted(RATS_ref2)
-
-Create a new column fitted to RATSL
-RATSL <- RATSL %>%
-  mutate(Fitted)
-
-draw the plot of RATSL
-ggplot(RATSL, aes(x = Time, y = Fitted, group = ID)) +
-  geom_line(aes(linetype = Group)) +
-  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 20)) +
-  scale_y_continuous(name = "Fitted weight (grams)") +
-  theme(legend.position = "top")
-
 
 
 
