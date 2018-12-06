@@ -1,0 +1,188 @@
+#Chapter 6: Analysis of longitudinal data
+
+**Part 0: Libraries used and overall setup**
+
+```{r echo=TRUE, warning=FALSE} 
+
+rm(list=ls())
+
+library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); 
+
+setwd("~/GitHub/IODS-project/data")
+
+ratsl <- read.table("RATSL.txt")
+bprsl <- read.table("BPRSL.txt")
+
+ratsl$ID <- factor(ratsl$ID)
+ratsl$Group <- factor(ratsl$Group)
+
+```
+
+
+###I: Implementing the analyses of chapter 8 using the RATS data 
+
+I am quite slavishly following the chapters in the books.Like a rat following the pied piper. 
+
+
+The data used in this first part:
+
+*Rats - Three different groups of rats (a total of 16 rats) are fed different food and change in their weight is observed. The data is originally from Crowder & Hand (1990). Used in this first part.
+
+
+First, I plot the individual rat observations by time. Group signals the colour. 
+
+[Important notice: In the Vehkalahti & Everett (2018?) chapter 8, there were three graphs by the groups, but I chose to distinguish the groups by color, as there are only 16 rats.]
+
+Whoa, there is one huge rat in the second group! Otherwise, the initial levels of the rat weight and the slopes seem to be quite close together group-wise.
+
+
+![](C:\Users\Juha\Desktop\capybara.jpg) The biggest rodent in the world is capybara.
+
+![](C:\Users\Juha\Desktop\capybara.gif) Capybaras are wicked cool animals.
+
+![](C:\Users\Juha\Desktop\capybara2.gif) Respected by all.
+
+[What's not to love.](https://www.smithsonianmag.com/smart-news/capybaras-are-basically-natures-chairs-180949677/)
+
+
+```{r} 
+
+ggplot(ratsl, aes(x = Time, y = Weight, group=ID, col = Group)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4))  + 
+  scale_y_continuous(name = "rat weight", limits = c(min(ratsl$Weight), max(ratsl$Weight))) 
+
+```
+
+Now if we standardize the weights (below), the slopes get more equal.There *seems* to be no differences in the growth rates of the rates time-wise. 
+ 
+
+```{r} 
+ratsl <- ratsl %>%
+  group_by(Time) %>%
+  mutate(stdweight = scale(Weight)) %>%
+  ungroup()
+
+ggplot(ratsl, aes(x = Time, y = stdweight, group=ID, col = Group )) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  scale_y_continuous(name = "Standardized rat weight")
+
+```
+
+
+Next, I plot how the mean weight has changed by group.
+
+Not that much new information here, as anticipated, the standard errors are highest among the second group. Yup, the one with that huge rat.
+
+
+```{r} 
+
+n <- ratsl$Time %>% unique() %>% length()
+
+ratsass <- ratsl %>%
+  group_by(Group, Time) %>%
+  summarise( mean = mean(Weight), se = sd(Weight)/sqrt(n)) %>%
+  ungroup()
+
+ggplot(ratsass, aes(x = Time, y = mean, linetype = Group, shape = Group)) +
+  geom_line() +
+  geom_point(size=3) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se, linetype="1"), width=0.3) +
+  theme(legend.position = c(0.9,0.5)) +
+  scale_y_continuous(name = "mean(Weight) +/- se(Weight)")
+
+```
+
+
+
+Summary measures approach in the form of boxplots. Boxes by groups. Excluding that one huge rat. The groups differ drastically. 
+
+
+```{r} 
+
+ratsass2 <- ratsl %>%
+  filter(Time > 1) %>%
+  group_by(Group, ID) %>%
+  summarise( mean=mean(Weight) ) %>%
+  ungroup()
+
+# Glimpse the data
+glimpse(ratsass2)
+
+str(ratsass2)
+#ok tähän mennessä
+
+ratsass3 <- filter(ratsass2,mean<550)
+
+str(ratsass3)
+#ok tähän mennessä
+
+
+# Draw a boxplot of the mean versus treatment
+ggplot(ratsass3, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(Weight), exluding initial Weight")
+
+
+
+```
+
+Next we check whether these differences appear to be statistically significant. As there are three groups, ANOVA is used instead of a two-sample t-test. The null hypothesis is that the means of the groups are the same and we test whether they differ significantly (both the average weight for the inspection period (t>WD1) and for the baseline weigh (t=WD1). 
+
+Assumptions are, that the observations are independent from each other, the data of each group is normally distributed and they have a common variance. 
+
+According to the Anova, the null hypothesis can be only rejected with the starting weight. Only the baseline weight is significantly different, otherwise, whatever is fed to those poor rats, is not working, which might be a good thing.
+
+```{r} 
+
+RATS <- read.table("https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/rats.txt")
+
+ratsass4 <- ratsass2 %>% mutate(baseline = RATS$WD1)
+
+fit <- lm(mean ~ baseline + Group, data = ratsass4)
+
+anova(fit)
+
+
+```
+
+
+
+###II: Implementing the analyses of chapter 9 using the BPRS data. 
+
+
+The data used in this second part:
+
+*Bprs - 40 males are divided into treatment and control groups (20 males in each group). And their brief psychiatric rating scores (bprs) are weekly measured for a total of 8 weeks. Bprs is a rating scale, which measure different psychiatric symptoms ([Wikipedia](https://en.wikipedia.org/wiki/Brief_Psychiatric_Rating_Scale)). The data is originally from Davis (2002).
+
+A few words about  multilevel modeling, if I may. A basic way to distinguish between different multilevel models is to categorize them into i) random intercept model, ii) random slope model and iii) a combination of the two, random intercept + slope model.
+Personally, I prefer different naming conventions with "varying intercept model" and "varying slope model", as they are more intuitive, but that might just be me.
+
+What does random or varying mean in this context? Well, with these models, we can take into account that the data structure is nested. One classic example of a nested data structure could be GPAs of students from different classes and schools. These different classes and schools might affect the outcome variable of the students in some way. Of course we can use dummy variables to model these school or class fixed effects, but there can be problems with this kind of approach. 
+
+The multilevel models allow for components for different group levels to and we can get this sort of main effect and then analyze what kind of effects the groups might have on the intercepts or slopes of different students in these schools. I.e. we have reason to expect, that the groups affect the outcome. If we don't have such a reason, then regular panel regression with clustered standard errors is a good tool. 
+
+
+
+
+
+*lineplot: y: bprs x: time (days). identify two groups.
+
+Now it's a fuss. In plotting of the individual time series, the use of two different graphs for control and treatment groups is justified, even though, it's kinda messy. 
+
+```{r}
+
+
+```
+
+LINEAR REGRESSION; WEIGH GROUP AND TIME. Ignoring the repeated measures structure of the data.
+
+SCATTERPLOT MATRIX
+
+RANDOM INTERCEPT MODEL WITH TIME AND GROUP AS EXPLANATORY VARS
+
+
+RANDOM INTERCEPT AND RANDOM SLOPE MODEL WITH TIME AND GROUP AS EXPLANATORY VARS
+
