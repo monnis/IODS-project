@@ -6,7 +6,7 @@
 
 rm(list=ls())
 
-library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); 
+library(dplyr); library(ggplot2); library(GGally); library(readr); library(tidyr); library(lme4) 
 
 setwd("~/GitHub/IODS-project/data")
 
@@ -31,7 +31,7 @@ The data used in this first part:
 
 First, I plot the individual rat observations by time. Group signals the colour. 
 
-[Important notice: In the Vehkalahti & Everett (2018?) chapter 8, there were three graphs by the groups, but I chose to distinguish the groups by color, as there are only 16 rats.]
+[*Important notice:* In the Vehkalahti & Everett (2018?) chapter 8, there layout was three graphs, one graph per group that is, but I chose to plot all the rats in the same graph and just distinguish the groups by color, as there are only 16 rats. The information provided by both approaches is somewhat equal.]
 
 Whoa, there is one huge rat in the second group! Otherwise, the initial levels of the rat weight and the slopes seem to be quite close together group-wise.
 
@@ -129,7 +129,7 @@ ggplot(ratsass3, aes(x = Group, y = mean)) +
 
 ```
 
-Next we check whether these differences appear to be statistically significant. As there are three groups, ANOVA is used instead of a two-sample t-test. The null hypothesis is that the means of the groups are the same and we test whether they differ significantly (both the average weight for the inspection period (t>WD1) and for the baseline weigh (t=WD1). 
+Next we check whether these differences appear to be statistically significant. As there are three groups, ANOVA is used instead of a two-sample t-test. The null hypothesis is that the means of the groups are the same and we test whether they differ significantly both for the average weight of the inspection period (t>WD1) and for the baseline weigh (t=WD1). 
 
 Assumptions are, that the observations are independent from each other, the data of each group is normally distributed and they have a common variance. 
 
@@ -160,29 +160,97 @@ The data used in this second part:
 A few words about  multilevel modeling, if I may. A basic way to distinguish between different multilevel models is to categorize them into i) random intercept model, ii) random slope model and iii) a combination of the two, random intercept + slope model.
 Personally, I prefer different naming conventions with "varying intercept model" and "varying slope model", as they are more intuitive, but that might just be me.
 
-What does random or varying mean in this context? Well, with these models, we can take into account that the data structure is nested. One classic example of a nested data structure could be GPAs of students from different classes and schools. These different classes and schools might affect the outcome variable of the students in some way. Of course we can use dummy variables to model these school or class fixed effects, but there can be problems with this kind of approach. 
+What does random or varying mean in this context? Traditionally  with these models, we can take into account that the data structure is nested (**to my understanding that is**). One classic example of a nested data structure could be GPAs of students from different classes and schools. A usual assumption for regression model is that the observations are independent, but this might not be a valid assumption. With multilevel models we can allow heterogeineity between groups or individuals slopes and/or intercepts. For instance, these different classes and schools might affect the outcome variable of the students in some way (their outcomes are correlated by the schools or classes) and with multilevel models we can get this sort of main effect and then consequently analyze what kind of effects different nested structures might have on the intercepts or slopes in the analysis.
 
-The multilevel models allow for components for different group levels to and we can get this sort of main effect and then analyze what kind of effects the groups might have on the intercepts or slopes of different students in these schools. I.e. we have reason to expect, that the groups affect the outcome. If we don't have such a reason, then regular panel regression with clustered standard errors is a good tool. 
-
-
+It must be noted that here we use multilevel models to allow slopes and intercepts differ by individual rat. The main point is that traditional regressions assume that the observations are independent, which is a rather invalid assumption with a dependent variable like rat weight. Rat weight at time=0 and weight at time=1 are unlikely to be independent observations. As such, we take theintraclass correlation of an individual rat's weight between different time points into account, making this a more robust form of analysis.
 
 
 
-*lineplot: y: bprs x: time (days). identify two groups.
+ON with the show! First I plot the bprs by the treatment and the control groups. It's quite a mess to be honest. In the plotting of the individual time series, the use of two different graphs for control and treatment groups is justified, even though, it's still kinda messy
 
-Now it's a fuss. In plotting of the individual time series, the use of two different graphs for control and treatment groups is justified, even though, it's kinda messy. 
 
 ```{r}
+ggplot(bprsl, aes(x = week, y = bprs, linetype = as.factor(subject))) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(bprsl$bprs), max(bprsl$bprs)))
+
+```
+
+
+Then a *standard issue linear regression* is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repated measures structure of the data.
+
+```{r}
+bprsl_reg <- lm(bprs ~ week + treatment, data = bprsl)
+summary(bprsl_reg)
+
+```
+
+
+*Random intercept model* to the rescue! This means, that we allow the intercept to vary for each individual male. 
+
+
+```{r}
+bprsl_int <- lmer(bprs ~ week + treatment + (1 | subject), data = bprsl, REML = FALSE)
+summary(bprsl_int)
+
+```
+
+
+*Random intercept and random slope model*
+
+
+```{r}
+bprsl_intslope <- lmer(bprs ~ week + treatment + (week | subject), data = bprsl, REML = FALSE)
+summary(bprsl_intslope)
+
+```
+
+
+*Random intercept and random slope model with timeXgroup interaction*
+
+
+
+```{r}
+bprsl_intslopeX <- lmer(bprs ~ week + treatment + week*treatment + (week | subject), data = bprsl, REML = FALSE)
+summary(bprsl_intslopeX)
 
 
 ```
 
-LINEAR REGRESSION; WEIGH GROUP AND TIME. Ignoring the repeated measures structure of the data.
 
-SCATTERPLOT MATRIX
-
-RANDOM INTERCEPT MODEL WITH TIME AND GROUP AS EXPLANATORY VARS
+*Comparison: Observed vs fitted growth rate profiles by groups*
 
 
-RANDOM INTERCEPT AND RANDOM SLOPE MODEL WITH TIME AND GROUP AS EXPLANATORY VARS
+
+
+```{r}
+
+```
+
+draw the plot of RATSL
+ggplot(RATSL, aes(x = Time, y = Weight, group = ID)) +
+  geom_line(aes(linetype = Group)) +
+  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 20)) +
+  scale_y_continuous(name = "Observed weight (grams)") +
+  theme(legend.position = "top")
+
+Create a vector of the fitted values
+Fitted <- fitted(RATS_ref2)
+
+Create a new column fitted to RATSL
+RATSL <- RATSL %>%
+  mutate(Fitted)
+
+draw the plot of RATSL
+ggplot(RATSL, aes(x = Time, y = Fitted, group = ID)) +
+  geom_line(aes(linetype = Group)) +
+  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 20)) +
+  scale_y_continuous(name = "Fitted weight (grams)") +
+  theme(legend.position = "top")
+
+
+
 
