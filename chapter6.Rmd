@@ -151,7 +151,7 @@ anova(fit)
 
 The data used in this second part:
 
-*Bprs - 40 males are divided into treatment and control groups (20 males in each group). And their brief psychiatric rating scores (bprs) are weekly measured for a total of 8 weeks. Bprs is a rating scale, which measure different psychiatric symptoms ([Wikipedia](https://en.wikipedia.org/wiki/Brief_Psychiatric_Rating_Scale)). The data is originally from Davis (2002).
+*Bprs - 40 males are divided into treatment and control groups with 20 males in each group (By the way, I'm calling treatment=2 the treatment group and treatment=1 the control group). The brief psychiatric rating scores (bprs) of these males are measured weekly  for a total of 8 weeks. Bprs is a rating scale, which measure different psychiatric symptoms ([Wikipedia](https://en.wikipedia.org/wiki/Brief_Psychiatric_Rating_Scale)). The data is originally from Davis (2002).
 
 A few words about  multilevel modeling, if I may. A basic way to distinguish between different multilevel models is to categorize them into i) random intercept model, ii) random slope model and iii) a combination of the two, random intercept + slope model.
 Personally, I prefer different naming conventions with "varying intercept model" and "varying slope model", as they are more intuitive, but that might just be me.
@@ -179,7 +179,7 @@ ggplot(bprsl, aes(x = week, y = bprs, linetype = as.factor(subject))) +
 ```
 
 
-Then a **standard issue linear regression** is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repated measures structure of the data.
+Then a **standard issue linear regression** is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repeated measures structure of the data, which means correlation between an individuals observations/ One possible reason might be due to an individual's chemical balance of the brain, or whatever unobservables correlated in time there might be.
 
 ```{r}
 bprsl_reg <- lm(bprs ~ week + treatment, data = bprsl)
@@ -188,8 +188,9 @@ summary(bprsl_reg)
 ```
 
 
-**Random intercept model** to the rescue! This means, that we allow the intercept to vary for each individual male. 
+**Random intercept model** to the rescue! This means, that we allow the intercept to vary for each individual male. So no more strict independence assumed for the observations. But this is likely not enough, as it is easy to imagine the slopes being different across individuals as well.
 
+The estimated variance of the individual random effects is quite large, signaling variation in the fitted individual intercepts.Estimated parameters for treatment and week are similar as in the linear regression estimated above, except for the standard errors, which are a bit smaller. So controlling for the within individual correlation does seem to pay off!
 
 ```{r}
 bprsl_int <- lmer(bprs ~ week + treatment + (1 | subject), data = bprsl, REML = FALSE)
@@ -200,17 +201,27 @@ summary(bprsl_int)
 
 **Random intercept and random slope model**
 
+As stated by the name of the model, now each individual is allowed to differ both in terms of intercept and slope. So heterogeineity all over the place is tolerated.
+
+We compare the random intercept and random intercept + slope models with an anova table. Chisquared and p-value suggests that the random intercept + slope model prevails over just random intercept model (as Datacamp suggests, the lower the values, the better the fit against the comparison model).
+
+
 
 ```{r}
 bprsl_intslope <- lmer(bprs ~ week + treatment + (week | subject), data = bprsl, REML = FALSE)
 summary(bprsl_intslope)
+
+anova(bprsl_intslope, bprsl_int)
+
 
 ```
 
 
 **Random intercept and random slope model with timeXgroup interaction**
 
+The interaction is not statistically significant on a 95% CI, although, some general remarks can be made. Overall, for both groups the BPRS scores seem to go down, but for males in the treatment group, the pace (or slope) is smaller. Something might be going on there, but this would probably need more individuals and more observations for statistical power. 
 
+Or the results could just be random walk of sorts: [Replication Crisis.](https://en.wikipedia.org/wiki/Replication_crisis)
 
 ```{r}
 bprsl_intslopeX <- lmer(bprs ~ week + treatment + week*treatment + (week | subject), data = bprsl, REML = FALSE)
@@ -225,15 +236,14 @@ summary(bprsl_intslopeX)
 ```
 
 
-**Comparison: Observed vs fitted bprs by groups** Here they are! Lol!
+**Comparison: Observed vs fitted bprs by groups** for the ending! Every male has their own slope and intercept. Seems cool! 
+
+**Thanks for reading this far! Have a great remainder of the year and if things get stressful and hectic, remember the capybaras!**
 
 
 ```{r}
 
-
 bprsl <- mutate(bprsl, subject2 = ifelse(bprsl$treatment==2, bprsl$subject+20, bprsl$subject)) 
-
-
 
 
 ggplot(bprsl, aes(x = week, y = bprs, group = subject2)) + 
