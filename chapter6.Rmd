@@ -127,7 +127,7 @@ ggplot(ratsass3, aes(x = Group, y = mean)) +
 
 Next we check whether these differences appear to be statistically significant. As there are three groups, ANOVA is used instead of a two-sample t-test. The null hypothesis is that the means of the groups are the same and we test whether they differ significantly both for the average weight of the inspection period (t>WD1) and for the baseline weigh (t=WD1). 
 
-Assumptions are, that the observations are independent from each other, the data of each group is normally distributed and they have a common variance. 
+Assumptions for Anova are that the observations are independent from each other, the data of each group is normally distributed and they have a common variance. 
 
 According to the Anova, the null hypothesis can be only rejected with the starting weight. Only the baseline weight is significantly different, otherwise, whatever is fed to those poor rats, is not working, which might be a good thing.
 
@@ -151,18 +151,16 @@ anova(fit)
 
 The data used in this second part:
 
-*Bprs - 40 males are divided into treatment and control groups with 20 males in each group (By the way, I'm calling treatment=2 the treatment group and treatment=1 the control group). The brief psychiatric rating scores (bprs) of these males are measured weekly  for a total of 8 weeks. Bprs is a rating scale, which measure different psychiatric symptoms ([Wikipedia](https://en.wikipedia.org/wiki/Brief_Psychiatric_Rating_Scale)). The data is originally from Davis (2002).
+*Bprs - 40 males are divided into treatment and control groups with 20 males in each group (By the way, I'm calling treatment=2 the treatment group and treatment=1 the control group). The brief psychiatric rating scores (bprs) of these males are measured weekly  for a total of 8 weeks. Bprs is a rating scale, which measures different psychiatric symptoms ([Wikipedia](https://en.wikipedia.org/wiki/Brief_Psychiatric_Rating_Scale)). The data is originally from Davis (2002).
 
 A few words about  multilevel modeling, if I may. A basic way to distinguish between different multilevel models is to categorize them into i) random intercept model, ii) random slope model and iii) a combination of the two, random intercept + slope model.
 Personally, I prefer different naming conventions with "varying intercept model" and "varying slope model", as they are more intuitive, but that might just be me.
 
-What does random or varying mean in this context? Traditionally  with these models, we can take into account that the data structure is nested (*to my understanding that is*). One classic example of a nested data structure could be GPAs of students from different classes and schools. A usual assumption for regression model is that the observations are independent, but this might not be a valid assumption. With multilevel models we can allow heterogeineity between groups or individuals slopes and/or intercepts. For instance, these different classes and schools might affect the outcome variable of the students in some way (their outcomes are correlated by the schools or classes) and with multilevel models we can get this sort of main effect and then consequently analyze what kind of effects different nested structures might have on the intercepts or slopes in the analysis.
+What does random or varying mean in this context? Traditionally  with these models, we can take into account that the data structure is nested (*to my understanding that is*). One classic example of a nested data structure could be students from different classes and schools. A usual assumption for regression model is that the observations are independent, but this might not be a valid assumption in such a case. With multilevel models we can allow heterogeineity between groups' (or individuals') slopes and/or intercepts. For instance, these different classes and schools might affect the outcome variable of the students, GPA for instance, in some way. The individual outcomes are correlated by the schools or classes and with multilevel models we can get this sort of main effect and then consequently analyze what kind of effects different nested structures might have on the intercepts or slopes used in the analysis.
 
-It must be noted that here we use multilevel models to allow slopes and intercepts differ by individual rat. The main point is that traditional regressions assume that the observations are independent, which is a rather invalid assumption with a dependent variable like rat weight. Rat weight at time=0 and weight at time=1 are unlikely to be independent observations. As such, we take theintraclass correlation of an individual rat's weight between different time points into account, making this a more robust form of analysis.
+It must be noted that here we use multilevel models to allow slopes and intercepts to differ by individual rat. Again, as more traditional regressions assume that the observations are independent, which is a rather invalid assumption with a dependent variable like bprs : bprs at time=0 and bprs at time=1 are unlikely to be independent observations. As such, we take the intraclass correlation of an individual male's bprs score between different time points into account, making this a more robust form of analysis.
 
-
-
-ON with the show! First I plot the bprs by the treatment and the control groups. It's quite a mess to be honest. In the plotting of the individual time series, the use of two different graphs for control and treatment groups is justified, even though, it's still kinda messy
+On with the show! First I plot the bprs by the treatment and the control groups and it's quite a mess to be honest.
 
 
 ```{r}
@@ -179,7 +177,7 @@ ggplot(bprsl, aes(x = week, y = bprs, linetype = as.factor(subject))) +
 ```
 
 
-Then a **standard issue linear regression** is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repeated measures structure of the data, which means correlation between an individuals observations/ One possible reason might be due to an individual's chemical balance of the brain, or whatever unobservables correlated in time there might be.
+Next, a **standard issue linear regression** is performed. The treatment is not  statistically significant, while both groups have a declining trend with time. It must be noted that this regression suffers from the issues mentioned above and ignores the repeated measures structure of the data, which means that any correlation between an individuals observations is not taken into account. A plausible reason why the individual observations might be correlated in time, could be due to an individual's chemical balance of the brain, or whatever unobservables correlated in time there might be.
 
 ```{r}
 bprsl_reg <- lm(bprs ~ week + treatment, data = bprsl)
@@ -203,7 +201,7 @@ summary(bprsl_int)
 
 As stated by the name of the model, now each individual is allowed to differ both in terms of intercept and slope. So heterogeineity all over the place is tolerated.
 
-We compare the random intercept and random intercept + slope models with an anova table. Chisquared and p-value suggests that the random intercept + slope model prevails over just random intercept model (as Datacamp suggests, the lower the values, the better the fit against the comparison model).
+We compare the random intercept and random intercept + slope models with an anova table. Chi-squared and p-value suggests that the random intercept + slope model prevails over just random intercept model (as Datacamp suggests, the lower the values, the better the fit against the comparison model).
 
 
 
